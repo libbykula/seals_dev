@@ -110,7 +110,8 @@ def lulc_clip(p):
             if p.scenario_type == 'baseline':
                 if p.aoi != 'global':
                     for year in p.years:
-                        p.base_data_lulc_src_paths[year] = os.path.join(base_data_lulc_src_dir, src_filename_start + str(year) + '.tif')
+                        # p.base_data_lulc_src_paths[year] = os.path.join(base_data_lulc_src_dir, src_filename_start + str(year) + '.tif')
+                        p.base_data_lulc_src_paths[year] = p.get_path(os.path.join(p.base_data_dir, p.base_year_lulc_path))
                         p.aoi_lulc_src_paths[year] = os.path.join(p.fine_processed_inputs_dir, 'lulc', p.lulc_src_label, src_filename_start + str(year) + '.tif')
                         p.lulc_src_paths[year] = p.aoi_lulc_src_paths[year] 
                         
@@ -230,7 +231,7 @@ def lulc_simplifications(p):
 
                             rules = p.lulc_correspondence_dict['src_to_dst_reclassification_dict']
                             output_path = p.aoi_lulc_simplified_paths[year]
-                            hb.reclassify_raster_hb(p.lulc_src_paths[year], rules, output_raster_path=output_path, output_data_type=1, array_threshold=10000, match_path=p.lulc_src_paths[year], verbose=False)
+                            hb.reclassify_raster_hb(p.lulc_src_paths[year], rules, output_path=output_path, output_data_type=1, array_threshold=10000, match_path=p.lulc_src_paths[year], verbose=False)
 
 
 
@@ -357,21 +358,26 @@ def lulc_convolutions(p):
                     current_input_binary_path = os.path.join(p.fine_processed_inputs_dir, 'lulc', p.lulc_src_label, p.lulc_simplification_label, 'binaries', str(year), 'binary_'+p.lulc_src_label+'_'+p.lulc_simplification_label+'_'+str(year)+'_' + str(label)+'.tif')
                     # current_input_binary_path = p.lulc_simplified_binary_paths[current_file_root]
 
-                    # First, define where the file should be created
-                    current_convolution_path = os.path.join(p.fine_processed_inputs_dir, 'lulc', 'esa', 
-                        p.lulc_simplification_label, 'convolutions', str(year), 
-                        'convolution_'+p.lulc_src_label+'_'+p.lulc_simplification_label+'_'+str(year)+'_' + 
-                        str(label) + '_gaussian_' + str(sigma) + '.tif')
+                    current_convolution_path = os.path.join(p.fine_processed_inputs_dir, 'lulc', p.lulc_src_label, p.lulc_simplification_label, 'convolutions', str(year), 'convolution_'+p.lulc_src_label+'_'+p.lulc_simplification_label+'_'+str(year)+'_' + str(label) + '_gaussian_' + str(sigma) + '.tif')
+                    current_convolution_relative_path = os.path.join('lulc', p.lulc_src_label, p.lulc_simplification_label, 'convolutions', str(year), 'convolution_'+p.lulc_src_label+'_'+p.lulc_simplification_label+'_'+str(year)+'_' + str(label) + '_gaussian_' + str(sigma) + '.tif')
 
-                    # Store this path in dictionary
-                    p.lulc_simplified_convolution_paths[current_convolution_name] = current_convolution_path
+                    this_path = p.get_path(current_convolution_relative_path, prepend_possible_dirs=[p.fine_processed_inputs_dir], verbose=False, raise_error_if_fail=False)
+                    p.lulc_simplified_convolution_paths[current_convolution_name] = this_path
+                    # Check to see if it exists in the present base data
+                    # current_structure = hb.get_path_after_dir(current_convolution_path, p.project_name)
+                    # base_data_trailing_dirs = os.sep.join(current_structure.split(os.sep)[2:])
+                    # base_data_equivilent_path = os.path.join(p.base_data_dir, base_data_trailing_dirs)
+                    # if hb.path_exists(base_data_equivilent_path):
+                    #     p.lulc_simplified_convolution_paths[current_convolution_name] = base_data_equivilent_path
+                    # else:
+                    #     p.lulc_simplified_convolution_paths[current_convolution_name] = current_convolution_path
 
-                    # Then check if it exists and add to parallel processing if needed
+                    # current_bulk_convolution_path = os.path.join(p.model_base_data_dir, 'convolutions', 'lulc_esa_simplified_' + str(year), current_convolution_name + '.tif')
+                    # NOTE, fft_gaussian has to write to disk, which i think i have to embrace.
                     if not os.path.exists(p.lulc_simplified_convolution_paths[current_convolution_name]):
-                        hb.log(' Starting FFT Gaussian (in parallel) on ' + current_input_binary_path + 
-                               ' and saving to ' + p.lulc_simplified_convolution_paths[current_convolution_name])
-                        parallel_iterable.append([current_input_binary_path, kernel_path, 
-                                                  p.lulc_simplified_convolution_paths[current_convolution_name], -9999.0, True])
+
+                        hb.log('  Starting FFT Gaussian (in parallel) on ' + current_input_binary_path + ' and saving to ' + p.lulc_simplified_convolution_paths[current_convolution_name])
+                        parallel_iterable.append([current_input_binary_path, kernel_path, p.lulc_simplified_convolution_paths[current_convolution_name], -9999.0, True])
 
         if len(parallel_iterable) > 0 and p.run_this:
             num_workers = max(min(multiprocessing.cpu_count() - 1, len(parallel_iterable)), 1)
@@ -406,9 +412,9 @@ def local_data_regressors_starting_values(p):
             # Set Multiplicative (constraint) coefficients
             for c, label in enumerate(p.all_class_labels):
                 # TODOO RENAME Everything Full and Simp instead of ESA and seals7_simplified_mosaic_is_natural.... This will generalize to any dataset.
-                base_data_path = os.path.join(p.base_data_dir, 'lulc', 'esa',  p.lulc_simplification_label, 'binaries', str(p.key_base_year), 'class_' + str(p.all_class_labels[c]) + '.tif')
+                base_data_path = os.path.join(p.base_data_dir, 'lulc', p.lulc_src_label,  p.lulc_simplification_label, 'binaries', str(p.key_base_year), 'class_' + str(p.all_class_labels[c]) + '.tif')
 
-                extant_path =  os.path.join(p.fine_processed_inputs_dir, 'lulc', 'esa',  p.lulc_simplification_label, 'binaries', str(p.key_base_year), 'class_' + str(p.all_class_labels[c]) + '.tif')
+                extant_path =  os.path.join(p.fine_processed_inputs_dir, 'lulc', p.lulc_src_label,  p.lulc_simplification_label, 'binaries', str(p.key_base_year), 'class_' + str(p.all_class_labels[c]) + '.tif')
 
                 row = [label + '_presence_constraint', extant_path,
                        'multiplicative'] + \
@@ -418,9 +424,9 @@ def local_data_regressors_starting_values(p):
             # Set additive coefficients
             # for class binaries
             for c, label in enumerate(p.all_class_labels):
-                base_data_path = os.path.join(p.base_data_dir, 'lulc', 'esa',  p.lulc_simplification_label, 'binaries', str(p.key_base_year), 'class_' + str(p.all_class_labels[c]) + '.tif')
+                base_data_path = os.path.join(p.base_data_dir, 'lulc', p.lulc_src_label,  p.lulc_simplification_label, 'binaries', str(p.key_base_year), 'class_' + str(p.all_class_labels[c]) + '.tif')
 
-                extant_path = os.path.join(p.fine_processed_inputs_dir, 'lulc', 'esa',  p.lulc_simplification_label, 'binaries', str(p.key_base_year), 'class_' + str(p.all_class_labels[c]) + '.tif')
+                extant_path = os.path.join(p.fine_processed_inputs_dir, 'lulc', p.lulc_src_label,  p.lulc_simplification_label, 'binaries', str(p.key_base_year), 'class_' + str(p.all_class_labels[c]) + '.tif')
 
 
                 row = [label + '_presence',
@@ -448,9 +454,9 @@ def local_data_regressors_starting_values(p):
                 ]
 
                 for c, label in enumerate(p.changing_class_labels):
-                    base_data_path = os.path.join(p.base_data_dir, 'lulc', 'esa',  p.lulc_simplification_label, 'convolutions', str(p.key_base_year), 'class_' + str(p.changing_class_labels[c]) + '_gaussian_' + str(sigma) + '.tif')
+                    base_data_path = os.path.join(p.base_data_dir, 'lulc', p.lulc_src_label,  p.lulc_simplification_label, 'convolutions', str(p.key_base_year), 'class_' + str(p.changing_class_labels[c]) + '_gaussian_' + str(sigma) + '.tif')
 
-                    extant_path = os.path.join(p.fine_processed_inputs_dir, 'lulc', 'esa',  p.lulc_simplification_label, 'convolutions', str(p.key_base_year), 'class_' + str(p.changing_class_labels[c]) + '_gaussian_' + str(sigma) + '.tif')
+                    extant_path = os.path.join(p.fine_processed_inputs_dir, 'lulc', p.lulc_src_label,  p.lulc_simplification_label, 'convolutions', str(p.key_base_year), 'class_' + str(p.changing_class_labels[c]) + '_gaussian_' + str(sigma) + '.tif')
 
                     row = [label + '_gaussian_' + str(sigma),
                            extant_path,
