@@ -1941,6 +1941,23 @@ def allocation(passed_p=None):
 
         elif len(p.combined_calibration_parameters_df):
             if 'calibration_block_index' in p.combined_calibration_parameters_df.columns: # Then it is the global source we pull from
+                # the calibration parameters are at 1deg resoultion, so need to get these to use the right ones 
+                zone_string_split = zone_string.split('_')
+                zone_coord_0 = int(zone_string_split[0])
+                zone_coord_1 = int(zone_string_split[1])
+
+                if (zone_coord_0 % 4 == 0) & (zone_coord_1 % 4 == 0):
+                    zone_string = str(zone_coord_0//4) + '_' + str(zone_coord_1//4)
+
+                elif (zone_coord_0 % 4 == 0) & (zone_coord_1 % 4 != 0):
+                    zone_string = str(zone_coord_0//4) + '_' + str((zone_coord_1-(zone_coord_1 % 4))//4)
+                
+                elif (zone_coord_0 % 4 != 0) & (zone_coord_1 % 4 == 0):
+                    zone_string = str((zone_coord_0-(zone_coord_0 % 4))//4) + '_' + str((zone_coord_1)//4)
+                
+                else:
+                    zone_string = str((zone_coord_0-(zone_coord_0 % 4))//4) + '_' + str((zone_coord_1-(zone_coord_1 % 4))//4)
+                    
                 current_calibration_block_index = zone_string + '_1_1'
                 p.calibrated_parameters_df = p.combined_calibration_parameters_df[p.combined_calibration_parameters_df['calibration_block_index'] == current_calibration_block_index]
                 spatial_regressors_df = p.calibrated_parameters_df

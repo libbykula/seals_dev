@@ -3,6 +3,8 @@ import os
 import hazelbean as hb
 import numpy as np
 import pandas as pd
+import matplotlib
+matplotlib.use("Agg") 
 from matplotlib import colors as colors
 from matplotlib import pyplot as plt
 import numpy as np
@@ -10,6 +12,7 @@ import hazelbean as hb
 import os
 from seals import seals_utils
 import pandas as pd
+from PIL import Image
 
 
 def show_lulc_class_change_difference(baseline_array, observed_array, projected_array, lulc_class, similarity_array, change_array, annotation_text, output_path, **kwargs):
@@ -145,41 +148,48 @@ def plot_array_as_seals7_lulc(input_array, output_path, title, indices_to_labels
     cmap = generate_custom_colorbar(input_array, color_scheme='seals_simplified')
     im = ax.imshow(input_array, cmap=cmap, vmin=0, vmax=10, interpolation='nearest')
 
-    max_cbar_category = 7
-    min_cbar_category = 1
-    n_categories = 7
+    # max_cbar_category = 7
+    # min_cbar_category = 1
+    # n_categories = 7
 
-    bin_size = (max_cbar_category - min_cbar_category) / (n_categories - 1)
-    bounds = np.linspace(min_cbar_category, max_cbar_category + 1, n_categories + 1)
-    bounds = [i - bin_size / 2.0 for i in bounds]
+    # bin_size = (max_cbar_category - min_cbar_category) / (n_categories - 1)
+    # bounds = np.linspace(min_cbar_category, max_cbar_category + 1, n_categories + 1)
+    # bounds = [i - bin_size / 2.0 for i in bounds]
 
-    ticks = np.linspace(min_cbar_category, max_cbar_category, n_categories)
+    # ticks = np.linspace(min_cbar_category, max_cbar_category, n_categories)
 
-    ax.get_xaxis().set_visible(False)
-    ax.get_yaxis().set_visible(False)
+    # # ax.get_xaxis().set_visible(True)
+    # # ax.get_yaxis().set_visible(True)
 
-    orientation = 'vertical'
-    aspect = 20
-    shrink = .50
+    # orientation = 'vertical'
+    # aspect = 20
+    # shrink = .50
     # cbar = plt.colorbar(im, ax=ax, cmap=cmap, orientation=orientation, )  # , format='%1i', spacing='proportional', norm=norm,
     # cbar = plt.colorbar(im, ax=ax, cmap=cmap, ticks=ticks, boundaries=bounds, orientation=orientation, )  # , format='%1i', spacing='proportional', norm=norm,
-    cbar = plt.colorbar(im, ax=ax, orientation=orientation, aspect=aspect, shrink=shrink, cmap=cmap, ticks=ticks, boundaries=bounds)  # , format='%1i', spacing='proportional', norm=norm,
+    # cbar = plt.colorbar(im, ax=ax, orientation=orientation, aspect=aspect, shrink=shrink, cmap=cmap, ticks=ticks, boundaries=bounds)  # , format='%1i', spacing='proportional', norm=norm,
 
 
-    ticklabels = [i.title() for i in list([i for i in indices_to_labels_dict.values() if 'ndv' not in i.lower()])]
+    # ticklabels = [i.title() for i in list([i for i in indices_to_labels_dict.values() if 'ndv' not in i.lower()])]
     # ticklabels = [i.title() for i in list(indices_to_labels_dict.values())[1:]]
-    cbar.set_ticklabels(ticklabels)
+    # cbar.set_ticklabels(ticklabels)
 
-    tick_labelsize = 8
-    cbar.ax.tick_params(labelsize=tick_labelsize)
+    # tick_labelsize = 8
+    # cbar.ax.tick_params(labelsize=tick_labelsize)
 
-    ax.set_title(title)
+    # ax.set_title(title)
 
-    ax.title.set_fontsize(12)
+    # ax.title.set_fontsize(12)
+    import numpy as np
+    print("Array dtype:", input_array.dtype)
+    print("Array min/max:", np.nanmin(input_array), np.nanmax(input_array))
+    print("Any NaNs?", np.isnan(input_array).any())
+    print("Any infs?", np.isinf(input_array).any())
+    print(input_array.shape)
 
-    fig.tight_layout()
+    # fig.tight_layout()
+    Image.fromarray(input_array).save(output_path)
 
-    fig.savefig(output_path, dpi=dpi)
+    # fig.savefig(output_path, dpi=100) # quietly dying here 
     plt.close()
 
 

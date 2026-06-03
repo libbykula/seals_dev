@@ -644,7 +644,7 @@ sum:
 
 def lulc_pngs(p):
     # Simple plot of the PNGs.
-
+    
     if p.run_this:
         if p.scenario_definitions_path is not None:
             p.scenarios_df = pd.read_csv(p.scenario_definitions_path)
